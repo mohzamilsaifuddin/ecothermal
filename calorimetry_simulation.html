@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heat Exchange Simulation — Black’s Principle</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --panel-bg: #ffffff;
+            --text-main: #333333;
+            --primary: #4a90e2;
+            --primary-hover: #357abd;
+            --water-color: rgba(74, 144, 226, 0.5);
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --metal-aluminum: #d7d7d7;
+            --metal-iron: #434b4d;
+            --metal-copper: #b87333;
+            --metal-brass: #b5a642;
+            --metal-silver: #c0c0c0;
+            --metal-gold: #ffd700;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .layout-container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Controls Base */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .value-display {
+            font-size: 14px;
+            color: var(--primary);
+            font-weight: bold;
+            float: right;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            flex: 1;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .btn-start { background-color: #2ecc71; }
+        .btn-start:hover { background-color: #27ae60; }
+        .btn-pause { background-color: #f39c12; }
+        .btn-pause:hover { background-color: #d68910; }
+        .btn-reset { background-color: #e74c3c; }
+        .btn-reset:hover { background-color: #c0392b; }
+
+        .btn-toggle { background-color: #9b59b6; }
+        .btn-toggle:hover { background-color: #8e44ad; }
+        .btn-check { background-color: var(--primary); }
+
+        /* Middle Panel (Canvas) */
+        .canvas-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        #simCanvas {
+            width: 100%;
+            height: 100%;
+            max-height: 400px;
+        }
+
+        /* Right Panel (Data) */
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 16px;
+            padding: 10px;
+            background: var(--bg-color);
+            border-radius: 6px;
+        }
+
+        .data-value {
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .formula-box {
+            background: #eef2f5;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+        }
+
+        /* Bottom Panel (Inquiry) */
+        .inquiry-panel {
+            flex: 0 0 auto;
+        }
+
+        .question-box {
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .answer-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        
+        .prediction-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: var(--border-radius);
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            z-index: 10;
+            display: none;
+        }
+
+        .blur { filter: blur(4px); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <h1>Heat Exchange Simulation — Black’s Principle</h1>
+
+    <div class="layout-container">
+        <!-- LEFT PANEL: Controls -->
+        <div class="panel">
+            <div class="panel-title">Controls</div>
+            
+            <div class="control-group">
+                <label>Metal Type</label>
+                <select id="metalType">
+                    <option value="900" data-color="#d7d7d7">Aluminum (900 J/kg°C)</option>
+                    <option value="450" data-color="#434b4d">Iron (450 J/kg°C)</option>
+                    <option value="385" data-color="#b87333">Copper (385 J/kg°C)</option>
+                    <option value="380" data-color="#b5a642">Brass (380 J/kg°C)</option>
+                    <option value="235" data-color="#c0c0c0">Silver (235 J/kg°C)</option>
+                    <option value="130" data-color="#ffd700">Gold (130 J/kg°C)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Metal Mass: <span id="valMetalMass" class="value-display">100 g</span></label>
+                <input type="range" id="metalMass" min="10" max="500" value="100" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>Metal Initial Temp: <span id="valMetalTemp" class="value-display">100 °C</span></label>
+                <input type="range" id="metalTemp" min="50" max="200" value="100" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>Water Mass: <span id="valWaterMass" class="value-display">200 g</span></label>
+                <input type="range" id="waterMass" min="50" max="500" value="200" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>Water Initial Temp: <span id="valWaterTemp" class="value-display">20 °C</span></label>
+                <input type="range" id="waterTemp" min="10" max="40" value="20" step="1">
+            </div>
+
+            <button class="btn-toggle" id="btnPredictionMode">Toggle Prediction Mode: OFF</button>
+
+            <div class="btn-group">
+                <button class="btn-start" id="btnStart">Start</button>
+                <button class="btn-pause" id="btnPause">Pause</button>
+                <button class="btn-reset" id="btnReset">Reset</button>
+            </div>
+        </div>
+
+        <!-- CENTER PANEL: AnimationCanvas -->
+        <div class="panel canvas-panel">
+            <div class="panel-title" style="width: 100%;">Simulation</div>
+            <canvas id="simCanvas"></canvas>
+            
+            <div id="predictionOverlay" class="prediction-overlay hidden">
+                <p>Prediction Mode is ON</p>
+                <p>Answer the questions below and Check Answer to reveal data!</p>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Data -->
+        <div class="panel" id="dataPanel">
+            <div class="panel-title">
+                Data & Results 
+                <button id="btnShowFormula" style="padding:4px 8px; font-size:12px; background:var(--primary); width:auto;">Formula</button>
+            </div>
+            
+            <div class="data-row">
+                <span>Current Metal Temp:</span>
+                <span class="data-value" id="displayMetalTemp">100.0 °C</span>
+            </div>
+            <div class="data-row">
+                <span>Current Water Temp:</span>
+                <span class="data-value" id="displayWaterTemp">20.0 °C</span>
+            </div>
+            <div class="data-row">
+                <span>Final Equilibrium Temp:</span>
+                <span class="data-value" id="displayFinalTemp">-- °C</span>
+            </div>
+            <div class="data-row">
+                <span>Heat Released (Metal):</span>
+                <span class="data-value" id="displayHeatLost">0 J</span>
+            </div>
+            <div class="data-row">
+                <span>Heat Absorbed (Water):</span>
+                <span class="data-value" id="displayHeatGained">0 J</span>
+            </div>
+
+            <div id="formulaBox" class="formula-box hidden">
+Black's Principle: Q_lost = Q_gained
+m_metal × c_metal × (T_metal - T_final)
+= m_water × c_water × (T_final - T_water)
+
+c_water = 4200 J/kg°C
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM PANEL: Inquiry -->
+    <div class="panel inquiry-panel">
+        <div class="panel-title">PISA Inquiry Questions</div>
+        <div class="question-box">1. Before running: Predict the final equilibrium temperature.</div>
+        <input type="number" id="predictTempInput" class="answer-input" placeholder="Enter predicted temperature (°C)...">
+        <div class="question-box">2. Which metal produces the largest temperature change for the water? Why?</div>
+        <input type="text" class="answer-input" placeholder="Your reasoning...">
+        <button class="btn-check" id="btnCheckAnswer">Check Answer & Reveal Logic</button>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const ui = {
+            metalType: document.getElementById('metalType'),
+            metalMass: document.getElementById('metalMass'),
+            metalTemp: document.getElementById('metalTemp'),
+            waterMass: document.getElementById('waterMass'),
+            waterTemp: document.getElementById('waterTemp'),
+            
+            valMetalMass: document.getElementById('valMetalMass'),
+            valMetalTemp: document.getElementById('valMetalTemp'),
+            valWaterMass: document.getElementById('valWaterMass'),
+            valWaterTemp: document.getElementById('valWaterTemp'),
+
+            displayMetalTemp: document.getElementById('displayMetalTemp'),
+            displayWaterTemp: document.getElementById('displayWaterTemp'),
+            displayFinalTemp: document.getElementById('displayFinalTemp'),
+            displayHeatLost: document.getElementById('displayHeatLost'),
+            displayHeatGained: document.getElementById('displayHeatGained'),
+
+            btnStart: document.getElementById('btnStart'),
+            btnPause: document.getElementById('btnPause'),
+            btnReset: document.getElementById('btnReset'),
+            btnPredictionMode: document.getElementById('btnPredictionMode'),
+            btnShowFormula: document.getElementById('btnShowFormula'),
+            btnCheckAnswer: document.getElementById('btnCheckAnswer'),
+            
+            formulaBox: document.getElementById('formulaBox'),
+            predictionOverlay: document.getElementById('predictionOverlay'),
+            dataPanelRowContainer: document.getElementById('dataPanel').querySelectorAll('.data-row'),
+            predictTempInput: document.getElementById('predictTempInput'),
+            canvas: document.getElementById('simCanvas')
+        };
+
+        const ctx = ui.canvas.getContext('2d');
+        const cWater = 4200; // J/kg°C
+
+        // --- State Variables ---
+        let state = {
+            isRunning: false,
+            isPaused: false,
+            isPredictionMode: false,
+            isRevealed: false,
+            timeElapsed: 0,
+            animationDuration: 3000, // ms
+            lastTimestamp: 0,
+            
+            // Initial Inputs
+            cMetal: 900,
+            metalColor: '#d7d7d7',
+            mMetal: 0.1, // kg
+            mWater: 0.2, // kg
+            tMetalStart: 100,
+            tWaterStart: 20,
+            
+            // Computed
+            tFinal: 20,
+            
+            // Current (Animation)
+            currentMetalTemp: 100,
+            currentWaterTemp: 20,
+            metalYOffset: -150
+        };
+
+        // --- Canvas Resize ---
+        function resizeCanvas() {
+            ui.canvas.width = ui.canvas.parentElement.clientWidth;
+            ui.canvas.height = ui.canvas.parentElement.clientHeight || 400;
+            drawStatic();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Initialize / Update UI Labels ---
+        function updateUIBindings() {
+            if(state.isRunning && !state.isPaused) return; // block changes during run
+            state.cMetal = parseFloat(ui.metalType.value);
+            state.metalColor = ui.metalType.options[ui.metalType.selectedIndex].dataset.color;
+            state.mMetal = parseFloat(ui.metalMass.value) / 1000;
+            state.tMetalStart = parseFloat(ui.metalTemp.value);
+            state.mWater = parseFloat(ui.waterMass.value) / 1000;
+            state.tWaterStart = parseFloat(ui.waterTemp.value);
+
+            ui.valMetalMass.textContent = ui.metalMass.value + " g";
+            ui.valMetalTemp.textContent = ui.metalTemp.value + " °C";
+            ui.valWaterMass.textContent = ui.waterMass.value + " g";
+            ui.valWaterTemp.textContent = ui.waterTemp.value + " °C";
+
+            resetSimulationState();
+        }
+
+        [ui.metalType, ui.metalMass, ui.metalTemp, ui.waterMass, ui.waterTemp].forEach(el => {
+            el.addEventListener('input', updateUIBindings);
+        });
+
+        // --- Physics Calculation ---
+        function calculateFinalTemp() {
+            // m1*c1*(T1-Tf) = m2*c2*(Tf-T2)
+            // m1c1T1 - m1c1Tf = m2c2Tf - m2c2T2
+            // m1c1T1 + m2c2T2 = Tf(m1c1 + m2c2)
+            // Tf = (m1c1T1 + m2c2T2) / (m1c1 + m2c2)
+            
+            let m1c1 = state.mMetal * state.cMetal;
+            let m2c2 = state.mWater * cWater;
+            let Tf = (m1c1 * state.tMetalStart + m2c2 * state.tWaterStart) / (m1c1 + m2c2);
+            state.tFinal = Tf;
+        }
+
+        // --- Drawing specific geometries ---
+        function drawBeaker(w, h, cx, cy) {
+            ctx.strokeStyle = '#8bbbe6';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(cx - w/2, cy - h/2);
+            ctx.lineTo(cx - w/2, cy + h/2);
+            ctx.arcTo(cx - w/2, cy + h/2 + 10, cx - w/2 + 10, cy + h/2 + 10, 10);
+            ctx.lineTo(cx + w/2 - 10, cy + h/2 + 10);
+            ctx.arcTo(cx + w/2, cy + h/2 + 10, cx + w/2, cy + h/2, 10);
+            ctx.lineTo(cx + w/2, cy - h/2);
+            ctx.stroke();
+        }
+
+        function drawWater(w, h, cx, cy, fillPercent, currentTemp) {
+            ctx.fillStyle = `rgba(74, 144, 226, 0.5)`; 
+            let waterH = h * fillPercent;
+            ctx.beginPath();
+            ctx.fillRect(cx - w/2 + 2, cy + h/2 + 8 - waterH, w - 4, waterH);
+        }
+
+        function drawMetalBlock(size, cx, cy, color, temp) {
+            ctx.fillStyle = color;
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(cx - size/2, cy - size/2, size, size);
+            ctx.shadowBlur = 0; // reset
+            
+            // overlay slightly red if hot
+            let heatOverlay = (temp - 20) / 180; // 0 to 1
+            if(heatOverlay > 0) {
+                ctx.fillStyle = `rgba(255, 50, 0, ${heatOverlay * 0.5})`;
+                ctx.fillRect(cx - size/2, cy - size/2, size, size);
+            }
+
+            // label temp
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(temp.toFixed(1) + '°C', cx, cy + 4);
+        }
+
+        function drawThermometer(cx, cy, currentTemp) {
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 2;
+            
+            // tube
+            ctx.beginPath();
+            ctx.roundRect(cx - 6, cy - 80, 12, 100, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // bulb
+            ctx.beginPath();
+            ctx.arc(cx, cy + 25, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // red liquid
+            let minT = 10;
+            let maxT = 200;
+            let pct = Math.max(0, Math.min(1, (currentTemp - minT) / (maxT - minT)));
+            let liquidH = pct * 80;
+
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(cx, cy + 25, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            if(liquidH > 0) {
+                ctx.fillRect(cx - 3, cy + 15 - liquidH, 6, liquidH);
+            }
+        }
+        
+        function drawHeatArrows(cx, cy, intensity) {
+            if (intensity <= 0.05) return;
+            ctx.strokeStyle = `rgba(255, 100, 0, ${intensity})`;
+            ctx.lineWidth = 3;
+            // Draw simple arrows moving away from block center
+            let r = 40 + Math.sin(Date.now()/150)*10;
+            for(let i=0; i<4; i++) {
+                let angle = (i * Math.PI/2) + Math.PI/4;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(angle)*(r-15), cy + Math.sin(angle)*(r-15));
+                ctx.lineTo(cx + Math.cos(angle)*r, cy + Math.sin(angle)*r);
+                ctx.stroke();
+            }
+        }
+
+        function drawStatic() {
+            ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
+            let cx = ui.canvas.width / 2;
+            let cy = ui.canvas.height / 2 + 50;
+
+            // Draw Beaker & Water
+            let beakerW = 140;
+            let beakerH = 160;
+            let waterPct = 0.3 + (state.mWater / 0.5) * 0.6; // varies with mass
+            drawWater(beakerW, beakerH, cx, cy, waterPct, state.currentWaterTemp);
+            drawBeaker(beakerW, beakerH, cx, cy);
+
+            // Draw Metal Block
+            let blockSize = 20 + (state.mMetal / 0.5) * 40;
+            let blockCy = cy + state.metalYOffset;
+            drawMetalBlock(blockSize, cx, blockCy, state.metalColor, state.currentMetalTemp);
+
+            // Draw Heat Flow if submerged and transferring
+            if (state.metalYOffset > -50 && Math.abs(state.currentMetalTemp - state.currentWaterTemp) > 0.5 && state.isRunning) {
+                let diff = Math.abs(state.currentMetalTemp - state.currentWaterTemp);
+                drawHeatArrows(cx, blockCy, diff/100);
+            }
+
+            // Draw Thermometer in water
+            drawThermometer(cx + beakerW/2 - 25, cy + 20, state.currentWaterTemp);
+        }
+
+        // --- Data Display ---
+        function updateDataDisplay() {
+            if(state.isPredictionMode && (!state.isRevealed && !state.isPaused && state.isRunning)) {
+               // Hiding logic is handled via CSS, but just to be safe we don't update inner text as much
+            }
+            
+            ui.displayMetalTemp.textContent = state.currentMetalTemp.toFixed(1) + " °C";
+            ui.displayWaterTemp.textContent = state.currentWaterTemp.toFixed(1) + " °C";
+            
+            if (state.timeElapsed >= state.animationDuration) {
+                ui.displayFinalTemp.textContent = state.tFinal.toFixed(1) + " °C";
+            } else {
+                ui.displayFinalTemp.textContent = "-- °C";
+            }
+
+            // Realtime Q calculate
+            let qLost = state.mMetal * state.cMetal * (state.tMetalStart - state.currentMetalTemp);
+            let qGained = state.mWater * cWater * (state.currentWaterTemp - state.tWaterStart);
+
+            ui.displayHeatLost.textContent = Math.abs(qLost).toFixed(0) + " J";
+            ui.displayHeatGained.textContent = Math.abs(qGained).toFixed(0) + " J";
+        }
+
+        // --- Animation Loop ---
+        function animate(timestamp) {
+            if (!state.lastTimestamp) state.lastTimestamp = timestamp;
+            let dt = timestamp - state.lastTimestamp;
+            state.lastTimestamp = timestamp;
+
+            if (state.isRunning && !state.isPaused) {
+                // Drop metal phase (first 500ms)
+                if (state.timeElapsed < 500) {
+                    let progress = state.timeElapsed / 500;
+                    state.metalYOffset = -150 + (190 * progress); // drop into water
+                } else {
+                    state.metalYOffset = 40; // fully submerged
+                    
+                    // Heat transfer phase
+                    let heatPhaseProgress = (state.timeElapsed - 500) / (state.animationDuration - 500);
+                    if (heatPhaseProgress > 1) heatPhaseProgress = 1;
+                    
+                    // Easing: easeOutQuad or smoothstep
+                    let ease = 1 - (1 - heatPhaseProgress) * (1 - heatPhaseProgress);
+
+                    state.currentMetalTemp = state.tMetalStart - (state.tMetalStart - state.tFinal) * ease;
+                    state.currentWaterTemp = state.tWaterStart + (state.tFinal - state.tWaterStart) * ease;
+                }
+
+                state.timeElapsed += dt;
+
+                if (state.timeElapsed >= state.animationDuration) {
+                    state.timeElapsed = state.animationDuration;
+                    state.isRunning = false; // complete
+                }
+            }
+
+            drawStatic();
+            updateDataDisplay();
+
+            if (state.isRunning || Math.abs(state.currentMetalTemp - state.currentWaterTemp) > 0) {
+                requestAnimationFrame(animate);
+            }
+            if(!state.isRunning) {
+                requestAnimationFrame(animate); // Keep drawing idle
+            }
+        }
+
+        // --- Actions ---
+        function resetSimulationState() {
+            state.isRunning = false;
+            state.isPaused = false;
+            state.timeElapsed = 0;
+            state.lastTimestamp = 0;
+            state.currentMetalTemp = state.tMetalStart;
+            state.currentWaterTemp = state.tWaterStart;
+            state.metalYOffset = -150;
+            calculateFinalTemp();
+            if(!state.isPredictionMode) state.isRevealed = true;
+            updateDataDisplay();
+        }
+
+        ui.btnStart.addEventListener('click', () => {
+            if(state.isPredictionMode && !state.isRevealed && !state.isRunning) {
+                // Should predict first! But allow run, just hide data
+                ui.dataPanelRowContainer.forEach(el => el.classList.add('blur'));
+                ui.predictionOverlay.classList.remove('hidden');
+            }
+            if (state.timeElapsed === 0) calculateFinalTemp();
+            state.isRunning = true;
+            state.isPaused = false;
+        });
+
+        ui.btnPause.addEventListener('click', () => {
+            state.isPaused = !state.isPaused;
+            ui.btnPause.textContent = state.isPaused ? "Resume" : "Pause";
+        });
+
+        ui.btnReset.addEventListener('click', () => {
+            resetSimulationState();
+            ui.predictionOverlay.classList.add('hidden');
+            if(!state.isPredictionMode) {
+                ui.dataPanelRowContainer.forEach(el => el.classList.remove('blur'));
+            }
+        });
+
+        ui.btnPredictionMode.addEventListener('click', () => {
+            state.isPredictionMode = !state.isPredictionMode;
+            ui.btnPredictionMode.textContent = `Toggle Prediction Mode: ${state.isPredictionMode ? 'ON' : 'OFF'}`;
+            if(state.isPredictionMode) {
+                state.isRevealed = false;
+                ui.dataPanelRowContainer.forEach(el => el.classList.add('blur'));
+            } else {
+                state.isRevealed = true;
+                ui.dataPanelRowContainer.forEach(el => el.classList.remove('blur'));
+                ui.predictionOverlay.classList.add('hidden');
+            }
+        });
+
+        ui.btnShowFormula.addEventListener('click', () => {
+            ui.formulaBox.classList.toggle('hidden');
+        });
+
+        ui.btnCheckAnswer.addEventListener('click', () => {
+            let guess = parseFloat(ui.predictTempInput.value);
+            state.isRevealed = true;
+            ui.dataPanelRowContainer.forEach(el => el.classList.remove('blur'));
+            ui.predictionOverlay.classList.add('hidden');
+            
+            let actualTf = state.tFinal.toFixed(1);
+            if (!isNaN(guess)) {
+                let diff = Math.abs(guess - state.tFinal);
+                if (diff < 2) {
+                    alert(`Great job! Your prediction ${guess}°C is very close to the actual ${actualTf}°C.`);
+                } else {
+                    alert(`The actual final temperature is ${actualTf}°C. \nRemember that Q_lost = Q_gained!`);
+                }
+            } else {
+                alert(`The actual final temperature is ${actualTf}°C.`);
+            }
+        });
+
+        // Initialize
+        setTimeout(() => {
+            updateUIBindings();
+            resizeCanvas();
+            requestAnimationFrame(animate);
+        }, 100);
+
+    </script>
+</body>
+</html>
