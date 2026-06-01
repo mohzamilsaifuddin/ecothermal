@@ -11,12 +11,6 @@ A Duolingo-inspired educational application built with Flutter, designed to teac
 - **Multilingual Support:** Built-in language provider for localized learning.
 - **Web Resources:** Seamless in-app browser (`webview_flutter`) for reading external environmental articles and resources.
 
-## 📱 Screenshots
-
-*(Add your screenshots here by replacing the placeholder links)*
-| Home Screen | Chat Screen | Info Screen |
-| :---: | :---: | :---: |
-| <img src="https://via.placeholder.com/250x500.png?text=Home+Screen" width="250"> | <img src="https://via.placeholder.com/250x500.png?text=Chat+Screen" width="250"> | <img src="https://via.placeholder.com/250x500.png?text=Info+Screen" width="250"> |
 
 ## 🛠️ Tech Stack
 
